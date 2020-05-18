@@ -158,8 +158,7 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 }
 
 
-static int request(struct sip_request *req, enum sip_transp tp,
-		   const struct sa *dst)
+static int request(struct sip_request *req, const struct sa *dst)
 {
 	struct mbuf *mb = NULL;
 	char *branch = NULL;
@@ -176,14 +175,14 @@ static int request(struct sip_request *req, enum sip_transp tp,
 
 	(void)re_snprintf(branch, 24, "z9hG4bK%016llx", rand_u64());
 
-	err = sip_transp_laddr(req->sip, &laddr, tp, dst);
+	err = sip_transp_laddr(req->sip, &laddr, req->tp, dst);
 	if (err)
 		goto out;
 
 	err  = mbuf_printf(mb, "%s %s SIP/2.0\r\n", req->met, req->uri);
 	err |= mbuf_printf(mb, "Via: SIP/2.0/%s %J;branch=%s;rport\r\n",
-			   sip_transp_name(tp), &laddr, branch);
-	err |= req->sendh ? req->sendh(tp, &laddr, dst, mb, req->arg) : 0;
+			   sip_transp_name(req->tp), &laddr, branch);
+	err |= req->sendh ? req->sendh(req->tp, &laddr, dst, mb, req->arg) : 0;
 	err |= mbuf_write_mem(mb, mbuf_buf(req->mb), mbuf_get_left(req->mb));
 	if (err)
 		goto out;
@@ -191,9 +190,9 @@ static int request(struct sip_request *req, enum sip_transp tp,
 	mb->pos = 0;
 
 	if (!req->stateful)
-		err = sip_send(req->sip, NULL, tp, dst, mb);
+		err = sip_send(req->sip, NULL, req->tp, dst, mb);
 	else
-		err = sip_ctrans_request(&req->ct, req->sip, tp, dst, req->met,
+		err = sip_ctrans_request(&req->ct, req->sip, req->tp, dst, req->met,
 					 branch, mb, response_handler, req);
 	if (err)
 		goto out;
@@ -256,7 +255,7 @@ static int request_next(struct sip_request *req)
 	list_unlink(&rr->le);
 	mem_deref(rr);
 
-	err = request(req, req->tp, &dst);
+	err = request(req, &dst);
 	if (err) {
 		if (req->addrl.head || req->srvl.head)
 			goto again;
@@ -671,7 +670,7 @@ int sip_request(struct sip_request **reqp, struct sip *sip, bool stateful,
 	if (!sa_set_str(&dst, req->host,
 			sip_transp_port(req->tp, route->port))) {
 
-		err = request(req, req->tp, &dst);
+		err = request(req, &dst);
 		if (!req->stateful) {
 			mem_deref(req);
 			return err;
