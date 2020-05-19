@@ -94,7 +94,10 @@ int sipsess_reply_2xx(struct sipsess *sess, const struct sip_msg *msg,
 	reply->msg  = mem_ref((void *)msg);
 	reply->sess = sess;
 
-	sip_contact_set(&contact, sess->cuser, &msg->dst, msg->tp);
+	sip_contact_set(&contact, sess->cuser,
+			sa_isset(&sess->raddr, SA_ADDR | SA_PORT)
+			? &sess->raddr : &msg->dst,
+			msg->tp);
 
 	err = sip_treplyf(&sess->st, &reply->mb, sess->sip,
 			  msg, true, scode, reason,
