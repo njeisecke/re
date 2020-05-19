@@ -141,7 +141,10 @@ int sipsess_reply_2xx(struct sipsess *sess, const struct sip_msg *msg,
 	if (non_invite && sess->neg_state != SDP_NEG_REMOTE_OFFER)
 		desc = NULL;
 
-	sip_contact_set(&contact, sess->cuser, &msg->dst, msg->tp);
+	sip_contact_set(&contact, sess->cuser,
+            sa_isset(&sess->raddr, SA_ADDR | SA_PORT)
+			? &sess->raddr : &msg->dst,
+            msg->tp);
 	err = sip_treplyf(non_invite ? NULL : &sess->st,
 			  reply ? &reply->mb : NULL, sess->sip,
 			  msg, true, scode, reason,
