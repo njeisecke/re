@@ -43,6 +43,7 @@ struct sipsess {
 	int prack_waiting_cnt;
 	int terminated;
 	enum sdp_neg_state neg_state;
+	struct sa raddr;
 };
 
 
@@ -71,7 +72,10 @@ struct sipsess_request {
 
 
 int  sipsess_alloc(struct sipsess **sessp, struct sipsess_sock *sock,
-		   const char *cuser, const char *ctype, struct mbuf *desc,
+		   const char *cuser,
+		   const struct sa *raddr,
+		   const char *ctype,
+		   struct mbuf *desc,
 		   sip_auth_h *authh, void *aarg, bool aref,
 		   sipsess_desc_h *desch,
 		   sipsess_offer_h *offerh, sipsess_answer_h *answerh,

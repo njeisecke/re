@@ -38,7 +38,7 @@ static int send_handler(enum sip_transp tp, struct sa *src,
 			return err;
 	}
 
-	sip_contact_set(&contact, sess->cuser, src, tp);
+	sip_contact_set(&contact, sess->cuser, sa_isset(&sess->raddr, SA_ADDR | SA_PORT) ? &sess->raddr : src, tp);
 	err = mbuf_printf(mb, "%H", sip_contact_print, &contact);
 	if (err)
 		goto out;
@@ -288,6 +288,7 @@ static int invite(struct sipsess *sess)
  * @param from_name From display name
  * @param from_uri  From SIP uri
  * @param cuser     Contact username or URI
+ * @param raddr     Optional address + port to use for Contact domain (if rport/received was sent during REGISTER)
  * @param routev    Outbound route vector
  * @param routec    Outbound route vector count
  * @param ctype     Session content-type
@@ -311,6 +312,7 @@ static int invite(struct sipsess *sess)
 int sipsess_connect(struct sipsess **sessp, struct sipsess_sock *sock,
 		    const char *to_uri, const char *from_name,
 		    const char *from_uri, const char *cuser,
+		    const struct sa *raddr,
 		    const char *routev[], uint32_t routec,
 		    const char *ctype,
 		    sip_auth_h *authh, void *aarg, bool aref,
@@ -328,7 +330,7 @@ int sipsess_connect(struct sipsess **sessp, struct sipsess_sock *sock,
 	if (!sessp || !sock || !to_uri || !from_uri || !cuser || !ctype)
 		return EINVAL;
 
-	err = sipsess_alloc(&sess, sock, cuser, ctype, NULL, authh, aarg, aref,
+	err = sipsess_alloc(&sess, sock, cuser, raddr, ctype, NULL, authh, aarg, aref,
 			    desch,
 			    offerh, answerh, progrh, estabh, infoh, referh,
 			    closeh, arg);

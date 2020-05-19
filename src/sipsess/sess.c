@@ -161,7 +161,10 @@ static void destructor(void *arg)
 
 
 int sipsess_alloc(struct sipsess **sessp, struct sipsess_sock *sock,
-		  const char *cuser, const char *ctype, struct mbuf *desc,
+		  const char *cuser,
+		  const struct sa *raddr,
+		  const char *ctype,
+		  struct mbuf *desc,
 		  sip_auth_h *authh, void *aarg, bool aref,
 		  sipsess_desc_h *desch,
 		  sipsess_offer_h *offerh, sipsess_answer_h *answerh,
@@ -183,6 +186,11 @@ int sipsess_alloc(struct sipsess **sessp, struct sipsess_sock *sock,
 	err = str_dup(&sess->cuser, cuser);
 	if (err)
 		goto out;
+
+	if (raddr)
+		sess->raddr = *raddr;
+	else
+		sa_init(&sess->raddr, AF_UNSPEC);
 
 	err = str_dup(&sess->ctype, ctype);
 	if (err)

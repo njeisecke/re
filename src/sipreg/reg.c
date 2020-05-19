@@ -51,6 +51,7 @@ struct sipreg {
 	char *params;
 	int regid;
 	uint16_t srcport;
+	struct sa raddr; // rport+received (RFC 3581)
 };
 
 
@@ -194,11 +195,24 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 	const struct sip_hdr *minexp;
 	struct sipreg *reg = arg;
 	uint16_t last_scode = reg->ls.last_scode;
+	struct pl pval;
 
 	reg->wait = failwait(reg->failc + 1);
 	if (err || !msg || sip_request_loops(&reg->ls, msg->scode)) {
 		reg->failc++;
 		goto out;
+	}
+
+	/* store rport and received parameters so the "Contact" header
+	   can be adjusted to use those values (RFC 3581) */
+	if (0 == msg_param_decode(&msg->via.params, "rport",
+				  &pval)) {
+		uint32_t rport = pl_u32(&pval);
+
+		if (0 == msg_param_decode(&msg->via.params, "received",
+					  &pval)) {
+			(void)sa_set(&reg->raddr, &pval, rport);
+		}
 	}
 
 	if (msg->scode < 200) {
@@ -307,7 +321,7 @@ static int send_handler(enum sip_transp tp, struct sa *src,
 	if (reg->srcport && tp != SIP_TRANSP_UDP)
 		sa_set_port(src, reg->srcport);
 
-	reg->laddr = *src;
+	reg->laddr = sa_isset(&reg->raddr, SA_ADDR | SA_PORT) ? reg->raddr : *src;
 	err = mbuf_printf(mb, "Contact: <sip:%s@%J%s%s%s>;expires=%u%s%s",
 			  reg->cuser, &reg->laddr, sip_transp_param(reg->tp),
 			  reg->cparams ? ";" : "",
@@ -364,6 +378,8 @@ static int vsipreg_alloc(struct sipreg **regp, struct sip *sip,
 	reg = mem_zalloc(sizeof(*reg), destructor);
 	if (!reg)
 		return ENOMEM;
+
+	sa_init(&reg->raddr, AF_UNSPEC);
 
 	err = sip_dialog_alloc(&reg->dlg, reg_uri, to_uri, from_name, from_uri,
 			       routev, routec);
@@ -562,6 +578,19 @@ int sipreg_set_rwait(struct sipreg *reg, uint32_t rwait)
 const struct sa *sipreg_laddr(const struct sipreg *reg)
 {
 	return reg ? &reg->laddr : NULL;
+}
+
+
+/**
+ * Get the remote socket address for a SIP Registration client
+ *
+ * @param reg SIP Registration client
+ *
+ * @return Remote socket address
+ */
+const struct sa *sipreg_raddr(const struct sipreg *reg)
+{
+	return reg ? &reg->raddr : NULL;
 }
 
 
