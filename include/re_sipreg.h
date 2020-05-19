@@ -16,3 +16,4 @@ int sipreg_register(struct sipreg **regp, struct sip *sip, const char *reg_uri,
 		    const char *params, const char *fmt, ...);
 
 const struct sa *sipreg_laddr(const struct sipreg *reg);
+const struct sa *sipreg_raddr(const struct sipreg *reg);
