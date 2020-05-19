@@ -61,7 +61,9 @@ static void cancel_handler(void *arg)
  */
 int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 		   const struct sip_msg *msg, uint16_t scode,
-		   const char *reason, const char *cuser, const char *ctype,
+		   const char *reason, const char *cuser,
+		   struct sa *raddr,
+		   const char *ctype,
 		   struct mbuf *desc,
 		   sip_auth_h *authh, void *aarg, bool aref,
 		   sipsess_offer_h *offerh, sipsess_answer_h *answerh,
@@ -77,7 +79,7 @@ int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 	    !cuser || !ctype)
 		return EINVAL;
 
-	err = sipsess_alloc(&sess, sock, cuser, ctype, NULL, authh, aarg, aref,
+	err = sipsess_alloc(&sess, sock, cuser, raddr, ctype, NULL, authh, aarg, aref,
 			    offerh, answerh, NULL, estabh, infoh, referh,
 			    closeh, arg);
 	if (err)
