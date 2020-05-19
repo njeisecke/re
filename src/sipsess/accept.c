@@ -44,6 +44,7 @@ static void cancel_handler(void *arg)
  * @param reason    Response reason phrase
  * @param rel100    Sending 1xx reliably supported, required or disabled
  * @param cuser     Contact username or URI
+ * @param raddr     Optional address + port to use for Contact domain (if rport/received was sent during REGISTER)
  * @param ctype     Session content-type
  * @param desc      Content description (e.g. SDP)
  * @param authh     SIP Authentication handler
@@ -63,7 +64,10 @@ static void cancel_handler(void *arg)
 int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 		   const struct sip_msg *msg, uint16_t scode,
 		   const char *reason, enum rel100_mode rel100,
-		   const char *cuser, const char *ctype, struct mbuf *desc,
+		   const char *cuser,
+		   const struct sa *raddr,
+		   const char *ctype,
+		   struct mbuf *desc,
 		   sip_auth_h *authh, void *aarg, bool aref,
 		   sipsess_offer_h *offerh, sipsess_answer_h *answerh,
 		   sipsess_estab_h *estabh, sipsess_info_h *infoh,
@@ -78,7 +82,7 @@ int sipsess_accept(struct sipsess **sessp, struct sipsess_sock *sock,
 	    !cuser || !ctype)
 		return EINVAL;
 
-	err = sipsess_alloc(&sess, sock, cuser, ctype, NULL, authh, aarg, aref,
+	err = sipsess_alloc(&sess, sock, cuser, raddr, ctype, NULL, authh, aarg, aref,
 			    NULL, offerh, answerh, NULL, estabh, infoh, referh,
 			    closeh, arg);
 	if (err)
