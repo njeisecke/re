@@ -48,10 +48,10 @@ INCDIR  := $(PREFIX)/include/re
 MKDIR   := $(PREFIX)/share/re
 CFLAGS	+= -Iinclude
 
-MODMKS	       := $(patsubst %,src/%/mod.mk,$(MODULES))
+MODMKS         := $(patsubst %,src/%/mod.mk,$(MODULES))
 SHARED         := libre$(LIB_SUFFIX)
 SHARED_SONAME  := libre$(LIB_SUFFIX).$(VER_ABI)
-STATIC	       := libre.a
+STATIC         := libre.a
 
 include $(MODMKS)
 
