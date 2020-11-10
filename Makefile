@@ -53,7 +53,9 @@ SHARED         := libre$(LIB_SUFFIX)
 SHARED_SONAME  := libre$(LIB_SUFFIX).$(VER_ABI)
 STATIC         := libre.a
 
+ifeq ($(OS),linux)
 SH_LFLAGS      += -Wl,-soname,$(SHARED_SONAME)
+endif
 
 include $(MODMKS)
 
