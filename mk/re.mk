@@ -233,7 +233,7 @@ ifeq ($(OS),linux)
 	CFLAGS		+= -fPIC -DLINUX
 	LIBS		+= -ldl
 	LFLAGS		+= -fPIC
-	SH_LFLAGS	+= -shared -Wl,-soname,libre.so.$(VER_ABI)
+	SH_LFLAGS	+= -shared
 	MOD_LFLAGS	+=
 	APP_LFLAGS	+= -rdynamic
 	AR		:= ar
