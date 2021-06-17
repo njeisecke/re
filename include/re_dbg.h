@@ -71,7 +71,8 @@ enum {
 
 /* Check for ISO C99 variable argument macros */
 #if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)	\
-	|| (__GNUC__ >= 3)
+	|| (__GNUC__ >= 3)\
+	|| defined(_MSC_VER)
 
 #if (DEBUG_LEVEL >= 4)
 #define DEBUG_WARNING(...) \
