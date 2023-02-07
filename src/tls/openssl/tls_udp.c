@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Creytiv.com
  */
 
-#include <sys/time.h>
+// #include <sys/time.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <re_types.h>
