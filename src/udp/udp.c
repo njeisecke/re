@@ -58,6 +58,63 @@ typedef UINT32 *PQOS_FLOWID;
 #define SIZ_CAST
 #endif
 
+#ifdef WIN32
+typedef BOOL (WINAPI *QOSRemoveSocketFromFlow_ptr)(HANDLE, SOCKET, QOS_FLOWID, DWORD);
+typedef BOOL (WINAPI *QOSCloseHandle_ptr)(HANDLE);
+typedef BOOL (WINAPI *QOSCreateHandle_ptr)(PQOS_VERSION, PHANDLE);
+typedef BOOL (WINAPI *QOSAddSocketToFlow_ptr)(HANDLE, SOCKET, PSOCKADDR, QOS_TRAFFIC_TYPE, DWORD, PQOS_FLOWID);
+
+static bool qwave_initialized = false;
+static struct {
+    bool available;
+    HANDLE hLib;
+    QOSRemoveSocketFromFlow_ptr QOSRemoveSocketFromFlow;
+    QOSCloseHandle_ptr QOSCloseHandle;
+    QOSCreateHandle_ptr QOSCreateHandle;
+    QOSAddSocketToFlow_ptr QOSAddSocketToFlow;
+} win32_qwave;
+
+static
+void init_win32_qwave()
+{
+    if (!qwave_initialized) {
+        win32_qwave.available = false;
+
+        HANDLE hLib = LoadLibrary("qwave.dll");
+        if (hLib != NULL) {
+            win32_qwave.hLib = hLib;
+            win32_qwave.QOSRemoveSocketFromFlow = (QOSRemoveSocketFromFlow_ptr) GetProcAddress(hLib, "QOSRemoveSocketFromFlow");
+            win32_qwave.QOSCloseHandle = (QOSCloseHandle_ptr) GetProcAddress(hLib, "QOSCloseHandle");
+            win32_qwave.QOSCreateHandle = (QOSCreateHandle_ptr) GetProcAddress(hLib, "QOSCreateHandle");
+            win32_qwave.QOSAddSocketToFlow = (QOSAddSocketToFlow_ptr) GetProcAddress(hLib, "QOSAddSocketToFlow");
+
+            win32_qwave.available = win32_qwave.QOSRemoveSocketFromFlow != NULL &&
+                                    win32_qwave.QOSCloseHandle != NULL &&
+                                    win32_qwave.QOSCreateHandle != NULL &&
+                                    win32_qwave.QOSAddSocketToFlow != NULL;
+        }
+
+        qwave_initialized = true;
+
+        DEBUG_NOTICE("win32 qwave support: %i\n", win32_qwave.available);
+    }
+}
+
+/**
+ * Some Windows versions don't have the "Quality Windows Audio Video Experience" feature installed.
+ * That mostly seem to be Windows Server versions (Terminal Server) and older Windows Versions.
+ * To prevent a hard runtime dependency on qwave.dll, load the library and the required symbols
+ * dynamically. If that fails, simply don't set the QOS/TOS flags.
+ *
+ * @return 1 if qwave could be loaded and the functions are available, otherwise 0
+ */
+static
+bool has_win32_qwave()
+{
+    init_win32_qwave();
+    return win32_qwave.available;
+}
+#endif
 
 enum {
 	UDP_RXSZ_DEFAULT = 8192
@@ -133,10 +190,12 @@ static void udp_destructor(void *data)
 	mem_deref(us->lock);
 
 #ifdef WIN32
-	if (us->qos && us->qos_id)
-		(void)QOSRemoveSocketFromFlow(us->qos, 0, us->qos_id, 0);
-	if (us->qos)
-		(void)QOSCloseHandle(us->qos);
+    if (has_win32_qwave()) {
+        if (us->qos && us->qos_id)
+            (void)win32_qwave.QOSRemoveSocketFromFlow(us->qos, 0, us->qos_id, 0);
+        if (us->qos)
+            (void)win32_qwave.QOSCloseHandle(us->qos);
+    }
 #endif
 
 	if (RE_BAD_SOCK != us->fd) {
@@ -650,19 +709,21 @@ int udp_settos(struct udp_sock *us, uint8_t tos)
 		return EINVAL;
 
 #ifdef WIN32
-	err = QOSCreateHandle(&qos_version, &us->qos);
-	if (!err)
-		return GetLastError();
+    if (has_win32_qwave()) {
+        err = win32_qwave.QOSCreateHandle(&qos_version, &us->qos);
+        if (!err)
+            return GetLastError();
 
-	us->qos_id = 0;
-	if (RE_BAD_SOCK != us->fd) {
-		err = QOSAddSocketToFlow(us->qos, us->fd, NULL,
-				qos_type,
-				QOS_NON_ADAPTIVE_FLOW,
-				&us->qos_id);
-		if (!err)
-			return WSAGetLastError();
-	}
+        us->qos_id = 0;
+        if (RE_BAD_SOCK != us->fd) {
+            err = win32_qwave.QOSAddSocketToFlow(us->qos, us->fd, NULL,
+                                                   qos_type,
+                                                   QOS_NON_ADAPTIVE_FLOW,
+                                                   &us->qos_id);
+            if (!err)
+                return WSAGetLastError();
+        }
+    }
 #endif
 	err = udp_setsockopt(us, IPPROTO_IP, IP_TOS, &v, sizeof(v));
 	return err;
