@@ -53,6 +53,28 @@ typedef UINT32 QOS_FLOWID, *PQOS_FLOWID;
 #define SIZ_CAST
 #endif
 
+#ifdef WIN32
+typedef BOOL (__cdecl *QOSRemoveSocketFromFlow_ptr)(HANDLE, SOCKET, QOS_FLOWID, DWORD);
+
+static struct {
+    bool initialized = false;
+    HANDLE hLibrary = 0;
+	QOSRemoveSocketFromFlow_ptr QOSRemoveSocketFromFlow_ptr;
+	// (void)QOSRemoveSocketFromFlow(us->qos, 0, us->qos_id, 0);
+	// (void)QOSCloseHandle(us->qos);
+	// err = QOSCreateHandle(&qos_version, &us->qos);
+	// err = QOSAddSocketToFlow(us->qos, us->fd, NULL,
+} udp_win32_qos;
+
+void init_win32_qos()
+{
+    if (!udp_win32_qos.initialized) {
+        udp_win32_qos.hLibrary = 1;
+        udp_win32_qos.initialized = true;
+    }
+}
+
+#endif
 
 enum {
 	UDP_RXSZ_DEFAULT = 8192
