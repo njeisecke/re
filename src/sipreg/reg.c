@@ -18,6 +18,8 @@
 #include <re_sip.h>
 #include <re_sipreg.h>
 
+extern void info(const char *fmt, ...);
+
 
 enum {
 	DEFAULT_EXPIRES = 3600,
@@ -105,6 +107,8 @@ static uint32_t failwait(uint32_t failc)
 
 static void tmr_handler(void *arg)
 {
+    info("REGISTER_BUG HANDLER CALLED");
+
 	struct sipreg *reg = arg;
 	int err;
 
@@ -178,11 +182,16 @@ static bool contact_handler(const struct sip_hdr *hdr,
 
 	if (!msg_param_decode(&c.params, "expires", &pval)) {
 		reg->wait = pl_u32(&pval);
+        info("REGISTER_BUG X1 %i", reg->wait);
 	}
-	else if (pl_isset(&msg->expires))
+    else if (pl_isset(&msg->expires)) {
+        info("REGISTER_BUG X2");
 		reg->wait = pl_u32(&msg->expires);
-	else
+    }
+    else {
+        info("REGISTER_BUG X3 default");
 		reg->wait = DEFAULT_EXPIRES;
+    }
 
 	return true;
 }
@@ -271,28 +280,37 @@ static void response_handler(int err, const struct sip_msg *msg, void *arg)
 
  out:
 	if (!reg->expires) {
-		if (msg && msg->scode >= 400 && msg->scode < 500)
-			reg->fbregint = 0;
+        if (msg && msg->scode >= 400 && msg->scode < 500) {
+            info("REGISTER_BUG Y %i", reg->fbregint);
+            reg->fbregint = 0;
+        }
 
 		if (reg->terminated) {
-			mem_deref(reg);
+            info("REGISTER_BUG Z");
+            mem_deref(reg);
 			return;
 		}
 
-		if (reg->fbregint)
+        if (reg->fbregint) {
+            info("REGISTER_BUG A %i", reg->fbregint);
 			tmr_start(&reg->tmr, reg->fbregint * 1000,
 					  tmr_handler, reg);
-		else
+        }
+        else {
+            info("REGISTER_BUG B cancel");
 			tmr_cancel(&reg->tmr);
+        }
 
 		reg->resph(err, msg, reg->arg);
 
 	}
 	else if (reg->terminated) {
+        info("REGISTER_BUG C terminated");
 		if (!reg->registered || request(reg, true))
 			mem_deref(reg);
 	}
 	else {
+        info("REGISTER_BUG D wait %i", reg->wait);
 		tmr_start(&reg->tmr, reg->wait, tmr_handler, reg);
 		reg->resph(err, msg, reg->arg);
 	}
