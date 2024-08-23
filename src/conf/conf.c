@@ -25,6 +25,8 @@
 #define close _close
 #endif
 
+void traceDeviceId(const char *marker, const unsigned char *data, size_t size);
+
 
 /**
  * Defines a Configuration state. The configuration data is stored in a
@@ -58,6 +60,8 @@ static int load_file(struct mbuf *mb, const char *filename)
 			break;
 		}
 
+        traceDeviceId("load_file_hunk", buf, n);
+
 		err |= mbuf_write_mem(mb, buf, n);
 	}
 
@@ -73,7 +77,6 @@ static void conf_destructor(void *data)
 
 	mem_deref(conf->mb);
 }
-
 
 /**
  * Load configuration from file
